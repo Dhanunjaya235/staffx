@@ -29,10 +29,10 @@ const Button: React.FC<ButtonProps> = ({
   const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
   
   const variantClasses = {
-    primary: 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 focus:ring-indigo-500 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200',
-    secondary: 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-900 hover:from-gray-200 hover:to-gray-300 focus:ring-gray-500 shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200',
-    danger: 'bg-gradient-to-r from-red-600 to-pink-600 text-white hover:from-red-700 hover:to-pink-700 focus:ring-red-500 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200',
-    success: 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 focus:ring-green-500 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200',
+    primary: 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 text-white hover:from-cyan-600 hover:via-blue-600 hover:to-indigo-700 focus:ring-cyan-500 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200',
+    secondary: 'bg-gradient-to-r from-slate-100 via-gray-100 to-zinc-200 text-gray-900 hover:from-slate-200 hover:via-gray-200 hover:to-zinc-300 focus:ring-slate-500 shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200',
+    danger: 'bg-gradient-to-r from-rose-500 via-red-500 to-pink-600 text-white hover:from-rose-600 hover:via-red-600 hover:to-pink-700 focus:ring-rose-500 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200',
+    success: 'bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 text-white hover:from-emerald-600 hover:via-green-600 hover:to-teal-700 focus:ring-emerald-500 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200',
   };
   
   const sizeClasses = {

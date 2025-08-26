@@ -8,7 +8,7 @@ import { useApi } from '../hooks/useApi';
 import { vendorsApi } from '../services/api';
 import Button from '../components/UI/Button/Button';
 import Table from '../components/UI/Table/Table';
-import { Truck, Plus, Users } from 'lucide-react';
+import { Truck, Plus, Users, Edit } from 'lucide-react';
 
 const Vendors: React.FC = () => {
   const navigate = useNavigate();
@@ -29,7 +29,7 @@ const Vendors: React.FC = () => {
       render: (count: number, vendor: any) => (
         <button
           onClick={() => navigate(`/resources?vendor=${vendor.id}`)}
-          className="flex items-center text-indigo-600 hover:text-indigo-800 font-medium"
+          className="flex items-center text-cyan-600 hover:text-cyan-800 font-medium"
         >
           <Users className="w-4 h-4 mr-1" />
           {count}
@@ -42,6 +42,14 @@ const Vendors: React.FC = () => {
       label: 'Actions',
       render: (_, vendor: any) => (
         <div className="space-x-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => openEditVendorDrawer(vendor)}
+            icon={Edit}
+          >
+            Edit
+          </Button>
           <Button
             size="sm"
             variant="primary"
@@ -63,6 +71,13 @@ const Vendors: React.FC = () => {
     });
   };
 
+  const openEditVendorDrawer = (vendor: any) => {
+    openDrawer({
+      title: `Edit Vendor - ${vendor.company}`,
+      content: <EditVendorForm vendor={vendor} onVendorUpdated={handleVendorUpdated} />,
+      onClose: () => {}
+    });
+  };
   const openAddResourceDrawer = (vendor: any) => {
     openDrawer({
       title: `Add Resource for ${vendor.company}`,
@@ -80,6 +95,14 @@ const Vendors: React.FC = () => {
     }
   };
 
+  const handleVendorUpdated = async (vendorData: any) => {
+    try {
+      // Would normally call update API here
+      console.log('Updating vendor:', vendorData);
+    } catch (error) {
+      console.error('Failed to update vendor:', error);
+    }
+  };
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -143,7 +166,7 @@ const CreateVendorForm: React.FC<CreateVendorFormProps> = ({ onVendorCreated }) 
           name="name"
           value={formData.name}
           onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
           required
         />
       </div>
@@ -157,7 +180,7 @@ const CreateVendorForm: React.FC<CreateVendorFormProps> = ({ onVendorCreated }) 
           name="email"
           value={formData.email}
           onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
           required
         />
       </div>
@@ -171,7 +194,7 @@ const CreateVendorForm: React.FC<CreateVendorFormProps> = ({ onVendorCreated }) 
           name="phone"
           value={formData.phone}
           onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
           required
         />
       </div>
@@ -185,7 +208,7 @@ const CreateVendorForm: React.FC<CreateVendorFormProps> = ({ onVendorCreated }) 
           name="company"
           value={formData.company}
           onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
           required
         />
       </div>
@@ -198,7 +221,7 @@ const CreateVendorForm: React.FC<CreateVendorFormProps> = ({ onVendorCreated }) 
           name="industry"
           value={formData.industry}
           onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
           required
         >
           <option value="">Select Industry</option>
@@ -218,6 +241,118 @@ const CreateVendorForm: React.FC<CreateVendorFormProps> = ({ onVendorCreated }) 
   );
 };
 
+interface EditVendorFormProps {
+  vendor: any;
+  onVendorUpdated: (vendor: any) => void;
+}
+
+const EditVendorForm: React.FC<EditVendorFormProps> = ({ vendor, onVendorUpdated }) => {
+  const [formData, setFormData] = React.useState({
+    name: vendor.name,
+    email: vendor.email,
+    phone: vendor.phone,
+    company: vendor.company,
+    industry: vendor.industry
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updatedVendor = {
+      ...vendor,
+      ...formData
+    };
+    onVendorUpdated(updatedVendor);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="p-6 space-y-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Contact Name
+        </label>
+        <input
+          type="text"
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Email
+        </label>
+        <input
+          type="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Phone
+        </label>
+        <input
+          type="tel"
+          name="phone"
+          value={formData.phone}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Company
+        </label>
+        <input
+          type="text"
+          name="company"
+          value={formData.company}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Industry
+        </label>
+        <select
+          name="industry"
+          value={formData.industry}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          required
+        >
+          <option value="">Select Industry</option>
+          <option value="Staffing">Staffing</option>
+          <option value="Consulting">Consulting</option>
+          <option value="Technology">Technology</option>
+          <option value="Healthcare">Healthcare</option>
+        </select>
+      </div>
+
+      <div className="flex justify-end">
+        <Button type="submit" variant="primary">
+          Update Vendor
+        </Button>
+      </div>
+    </form>
+  );
+};
 interface AddResourceFormProps {
   vendor: any;
 }
@@ -244,9 +379,9 @@ const AddResourceForm: React.FC<AddResourceFormProps> = ({ vendor }) => {
 
   return (
     <form onSubmit={handleSubmit} className="p-6 space-y-6">
-      <div className="bg-indigo-50 p-4 rounded-md">
-        <h4 className="font-medium text-indigo-900">Vendor: {vendor.company}</h4>
-        <p className="text-sm text-indigo-600">{vendor.name} • {vendor.email}</p>
+      <div className="bg-cyan-50 p-4 rounded-md">
+        <h4 className="font-medium text-cyan-900">Vendor: {vendor.company}</h4>
+        <p className="text-sm text-cyan-600">{vendor.name} • {vendor.email}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -259,7 +394,7 @@ const AddResourceForm: React.FC<AddResourceFormProps> = ({ vendor }) => {
             name="name"
             value={formData.name}
             onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
             required
           />
         </div>
@@ -272,7 +407,7 @@ const AddResourceForm: React.FC<AddResourceFormProps> = ({ vendor }) => {
             name="email"
             value={formData.email}
             onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
             required
           />
         </div>
@@ -287,7 +422,7 @@ const AddResourceForm: React.FC<AddResourceFormProps> = ({ vendor }) => {
           name="phone"
           value={formData.phone}
           onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
           required
         />
       </div>
@@ -300,7 +435,7 @@ const AddResourceForm: React.FC<AddResourceFormProps> = ({ vendor }) => {
           name="jobId"
           value={formData.jobId}
           onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
           required
         >
           <option value="">Select Job</option>
@@ -321,7 +456,7 @@ const AddResourceForm: React.FC<AddResourceFormProps> = ({ vendor }) => {
           name="experience"
           value={formData.experience}
           onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
           required
         />
       </div>
@@ -336,7 +471,7 @@ const AddResourceForm: React.FC<AddResourceFormProps> = ({ vendor }) => {
           value={formData.skills}
           onChange={handleChange}
           placeholder="React, TypeScript, Node.js"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
           required
         />
       </div>

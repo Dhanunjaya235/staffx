@@ -82,6 +82,8 @@ export function useMultipleApi() {
     setError(null);
     dispatch(setGlobalLoading(true));
 
+    // Add all promises to the global tracker
+    promises.forEach(promise => activePromises.add(promise));
     try {
       const results = await Promise.all(promises);
       return results;
@@ -91,7 +93,11 @@ export function useMultipleApi() {
       throw err;
     } finally {
       setLoading(false);
+      // Remove all promises from the global tracker
+      promises.forEach(promise => activePromises.delete(promise));
+      if (activePromises.size === 0) {
       dispatch(setGlobalLoading(false));
+      }
     }
   }, [dispatch]);
 

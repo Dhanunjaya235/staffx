@@ -169,6 +169,7 @@ const Resources: React.FC = () => {
 const CreateResourceForm: React.FC = () => {
   const { jobs } = useSelector((state: RootState) => state.jobs);
   const { clients } = useSelector((state: RootState) => state.clients);
+  const { vendors } = useSelector((state: RootState) => state.vendors);
   const { openDrawer } = useDrawer();
 
   const [formData, setFormData] = React.useState({
@@ -197,6 +198,13 @@ const CreateResourceForm: React.FC = () => {
     });
   };
 
+  const openCreateVendorDrawer = () => {
+    openDrawer({
+      title: 'Create New Vendor',
+      content: <CreateVendorForm onVendorCreated={(vendor) => setFormData({...formData, vendorId: vendor.id})} />,
+      onClose: () => {}
+    });
+  };
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -307,17 +315,30 @@ const CreateResourceForm: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Vendor
           </label>
-          <select
-            name="vendorId"
-            value={formData.vendorId}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          >
-            <option value="">Select Vendor</option>
-            <option value="1">ABC Staffing</option>
-            <option value="2">XYZ Consulting</option>
-          </select>
+          <div className="flex space-x-2">
+            <select
+              name="vendorId"
+              value={formData.vendorId}
+              onChange={handleChange}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">Select Vendor</option>
+              {vendors.map(vendor => (
+                <option key={vendor.id} value={vendor.id}>
+                  {vendor.company}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={openCreateVendorDrawer}
+              icon={Plus}
+            >
+              New Vendor
+            </Button>
+          </div>
         </div>
       )}
 
@@ -359,6 +380,99 @@ const CreateResourceForm: React.FC = () => {
   );
 };
 
+// Create Vendor Form Component
+const CreateVendorForm: React.FC<{ onVendorCreated: (vendor: any) => void }> = ({ onVendorCreated }) => {
+  const [formData, setFormData] = React.useState({
+    name: '',
+    email: '',
+    phone: '',
+    company: '',
+    industry: ''
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newVendor = {
+      id: Date.now().toString(),
+      ...formData,
+      resourcesCount: 0,
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+    onVendorCreated(newVendor);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="p-6 space-y-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Contact Name</label>
+        <input
+          type="text"
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+        <input
+          type="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+        <input
+          type="tel"
+          name="phone"
+          value={formData.phone}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Company</label>
+        <input
+          type="text"
+          name="company"
+          value={formData.company}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Industry</label>
+        <select
+          name="industry"
+          value={formData.industry}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        >
+          <option value="">Select Industry</option>
+          <option value="Staffing">Staffing</option>
+          <option value="Consulting">Consulting</option>
+          <option value="Technology">Technology</option>
+          <option value="Healthcare">Healthcare</option>
+        </select>
+      </div>
+      <div className="flex justify-end">
+        <Button type="submit" variant="primary">Create Vendor</Button>
+      </div>
+    </form>
+  );
+};
 interface EditResourceFormProps {
   resource: any;
 }
