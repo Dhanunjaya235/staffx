@@ -5,23 +5,26 @@ import { store } from './store';
 import Layout from './components/Layout/Layout';
 import RoleAssignment from './pages/RoleAssignment';
 import Clients from './pages/Clients';
+import Vendors from './pages/Vendors';
 import Jobs from './pages/Jobs';
 import Resources from './pages/Resources';
 import ResourceDetails from './pages/ResourceDetails';
+import GlobalLoader from './components/UI/GlobalLoader/GlobalLoader';
 
 function App() {
   return (
     <Provider store={store}>
       <Router>
+        <GlobalLoader />
         <Layout>
           <Routes>
             <Route path="/" element={<Navigate to="/clients" replace />} />
             <Route path="/role-assignment" element={<RoleAssignment />} />
             <Route path="/clients" element={<Clients />} />
+            <Route path="/vendors" element={<Vendors />} />
             <Route path="/jobs" element={<Jobs />} />
             <Route path="/resources" element={<Resources />} />
             <Route path="/resources/:id" element={<ResourceDetails />} />
-            <Route path="/users" element={<div className="p-6"><h1 className="text-2xl font-bold">Users Management</h1><p className="text-gray-600 mt-2">User management features coming soon.</p></div>} />
           </Routes>
         </Layout>
       </Router>

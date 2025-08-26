@@ -5,6 +5,8 @@ import jobsSlice from './slices/jobsSlice';
 import resourcesSlice from './slices/resourcesSlice';
 import rolesSlice from './slices/rolesSlice';
 import usersSlice from './slices/usersSlice';
+import vendorsSlice from './slices/vendorsSlice';
+import uiSlice from './slices/uiSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +16,8 @@ export const store = configureStore({
     resources: resourcesSlice,
     roles: rolesSlice,
     users: usersSlice,
+    vendors: vendorsSlice,
+    ui: uiSlice,
   },
 });
 
