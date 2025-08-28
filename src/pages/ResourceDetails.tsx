@@ -5,6 +5,7 @@ import { RootState } from '../store';
 import { useDrawer } from '../components/UI/Drawer/DrawerProvider';
 import Button from '../components/UI/Button/Button';
 import Breadcrumb from '../components/UI/Breadcrumb/Breadcrumb';
+import Dropdown from '../components/UI/Dropdown/Dropdown';
 import { ArrowLeft, Plus, Edit, Phone, Mail, Calendar, User, ChevronDown, ChevronRight } from 'lucide-react';
 
 const ResourceDetails: React.FC = () => {
@@ -319,20 +320,13 @@ const AddRoundForm: React.FC<AddRoundFormProps> = ({ resource }) => {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Round Type
         </label>
-        <select
-          name="roundType"
+        <Dropdown
+          options={['Phone Screen', 'Technical Interview', 'Behavioral Interview', 'Final Interview', 'Client Interview']}
           value={formData.roundType}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onChange={(value) => setFormData({ ...formData, roundType: value as string })}
+          placeholder="Select Round Type"
           required
-        >
-          <option value="">Select Round Type</option>
-          <option value="Phone Screen">Phone Screen</option>
-          <option value="Technical">Technical Interview</option>
-          <option value="Behavioral">Behavioral Interview</option>
-          <option value="Final">Final Interview</option>
-          <option value="Client Interview">Client Interview</option>
-        </select>
+        />
       </div>
 
       <div>
@@ -367,19 +361,13 @@ const AddRoundForm: React.FC<AddRoundFormProps> = ({ resource }) => {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Status
         </label>
-        <select
-          name="status"
+        <Dropdown
+          options={['Scheduled', 'Completed', 'Passed', 'Failed', 'No Show']}
           value={formData.status}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onChange={(value) => setFormData({ ...formData, status: value as string })}
+          placeholder="Select Status"
           required
-        >
-          <option value="Scheduled">Scheduled</option>
-          <option value="Completed">Completed</option>
-          <option value="Passed">Passed</option>
-          <option value="Failed">Failed</option>
-          <option value="No Show">No Show</option>
-        </select>
+        />
       </div>
 
       <div className="flex justify-end">
@@ -419,19 +407,13 @@ const EditRoundForm: React.FC<EditRoundFormProps> = ({ round }) => {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Round Type
         </label>
-        <select
-          name="roundType"
+        <Dropdown
+          options={['Phone Screen', 'Technical Interview', 'Behavioral Interview', 'Final Interview', 'Client Interview']}
           value={formData.roundType}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onChange={(value) => setFormData({ ...formData, roundType: value as string })}
+          placeholder="Select Round Type"
           required
-        >
-          <option value="Phone Screen">Phone Screen</option>
-          <option value="Technical">Technical Interview</option>
-          <option value="Behavioral">Behavioral Interview</option>
-          <option value="Final">Final Interview</option>
-          <option value="Client Interview">Client Interview</option>
-        </select>
+        />
       </div>
 
       <div>
@@ -466,19 +448,13 @@ const EditRoundForm: React.FC<EditRoundFormProps> = ({ round }) => {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Status
         </label>
-        <select
-          name="status"
+        <Dropdown
+          options={['Scheduled', 'Completed', 'Passed', 'Failed', 'No Show']}
           value={formData.status}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onChange={(value) => setFormData({ ...formData, status: value as string })}
+          placeholder="Select Status"
           required
-        >
-          <option value="Scheduled">Scheduled</option>
-          <option value="Completed">Completed</option>
-          <option value="Passed">Passed</option>
-          <option value="Failed">Failed</option>
-          <option value="No Show">No Show</option>
-        </select>
+        />
       </div>
 
       <div>
