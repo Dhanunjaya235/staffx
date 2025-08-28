@@ -74,7 +74,7 @@ const DrawerOverlay: React.FC<DrawerOverlayProps> = ({ drawer, zIndex, onClose }
       style={{ zIndex }}
     >
       <div 
-        className="fixed right-0 top-0 h-full w-96 bg-white shadow-xl transform transition-transform duration-300 ease-in-out flex flex-col"
+        className="fixed right-0 top-0 h-full w-[30vw] bg-white shadow-xl transform transition-transform duration-300 ease-in-out flex flex-col"
       >
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">{drawer.title}</h2>

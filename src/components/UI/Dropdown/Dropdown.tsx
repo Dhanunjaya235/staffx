@@ -134,7 +134,7 @@ const Dropdown = <T extends string | DropdownOption>({
     }
   };
 
-  const hasValue = multiple ? Array.isArray(value) && value.length > 0 : value !== null && value !== undefined;
+  const hasValue = multiple ? Array.isArray(value) && value.length > 0 : value !== null && value !== undefined && value !== '';
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
