@@ -8,6 +8,7 @@ import { useApi } from '../hooks/useApi';
 import { vendorsApi } from '../services/api';
 import Button from '../components/UI/Button/Button';
 import Table from '../components/UI/Table/Table';
+import Dropdown from '../components/UI/Dropdown/Dropdown';
 import { Truck, Plus, Users, Edit } from 'lucide-react';
 
 const Vendors: React.FC = () => {
@@ -217,19 +218,13 @@ const CreateVendorForm: React.FC<CreateVendorFormProps> = ({ onVendorCreated }) 
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Industry
         </label>
-        <select
-          name="industry"
+        <Dropdown
+          options={['Staffing', 'Consulting', 'Technology', 'Healthcare']}
           value={formData.industry}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          onChange={(value) => setFormData({ ...formData, industry: value as string })}
+          placeholder="Select Industry"
           required
-        >
-          <option value="">Select Industry</option>
-          <option value="Staffing">Staffing</option>
-          <option value="Consulting">Consulting</option>
-          <option value="Technology">Technology</option>
-          <option value="Healthcare">Healthcare</option>
-        </select>
+        />
       </div>
 
       <div className="flex justify-end">
@@ -330,19 +325,13 @@ const EditVendorForm: React.FC<EditVendorFormProps> = ({ vendor, onVendorUpdated
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Industry
         </label>
-        <select
-          name="industry"
+        <Dropdown
+          options={['Staffing', 'Consulting', 'Technology', 'Healthcare']}
           value={formData.industry}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          onChange={(value) => setFormData({ ...formData, industry: value as string })}
+          placeholder="Select Industry"
           required
-        >
-          <option value="">Select Industry</option>
-          <option value="Staffing">Staffing</option>
-          <option value="Consulting">Consulting</option>
-          <option value="Technology">Technology</option>
-          <option value="Healthcare">Healthcare</option>
-        </select>
+        />
       </div>
 
       <div className="flex justify-end">
@@ -431,20 +420,14 @@ const AddResourceForm: React.FC<AddResourceFormProps> = ({ vendor }) => {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Job
         </label>
-        <select
-          name="jobId"
+        <Dropdown
+          options={jobs}
+          displayKey="title"
           value={formData.jobId}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          onChange={(value) => setFormData({ ...formData, jobId: (value as any)?.id || '' })}
+          placeholder="Select Job"
           required
-        >
-          <option value="">Select Job</option>
-          {jobs.map(job => (
-            <option key={job.id} value={job.id}>
-              {job.title} - {job.clientName}
-            </option>
-          ))}
-        </select>
+        />
       </div>
 
       <div>

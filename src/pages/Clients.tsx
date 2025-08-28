@@ -6,6 +6,7 @@ import { addClient } from '../store/slices/clientsSlice';
 import { useDrawer } from '../components/UI/Drawer/DrawerProvider';
 import Button from '../components/UI/Button/Button';
 import Table from '../components/UI/Table/Table';
+import Dropdown from '../components/UI/Dropdown/Dropdown';
 import { Building2, Plus, Briefcase, Users } from 'lucide-react';
 
 const Clients: React.FC = () => {
@@ -189,19 +190,13 @@ const CreateClientForm: React.FC = () => {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Industry
         </label>
-        <select
-          name="industry"
+        <Dropdown
+          options={['Technology', 'Consulting', 'Finance', 'Healthcare']}
           value={formData.industry}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onChange={(value) => setFormData({ ...formData, industry: value as string })}
+          placeholder="Select Industry"
           required
-        >
-          <option value="">Select Industry</option>
-          <option value="Technology">Technology</option>
-          <option value="Consulting">Consulting</option>
-          <option value="Finance">Finance</option>
-          <option value="Healthcare">Healthcare</option>
-        </select>
+        />
       </div>
 
       <div className="flex justify-end">
@@ -274,20 +269,15 @@ const AddJobForm: React.FC<AddJobFormProps> = ({ client }) => {
           Role
         </label>
         <div className="flex space-x-2">
-          <select
-            name="roleId"
+          <Dropdown
+            options={roles}
+            displayKey="name"
             value={formData.roleId}
-            onChange={handleChange}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={(value) => setFormData({...formData, roleId: (value as any)?.id || ''})}
+            placeholder="Select Role"
+            className="flex-1"
             required
-          >
-            <option value="">Select Role</option>
-            {roles.map(role => (
-              <option key={role.id} value={role.id}>
-                {role.name} ({role.level})
-              </option>
-            ))}
-          </select>
+          />
           <Button
             type="button"
             variant="secondary"
@@ -403,21 +393,13 @@ const CreateRoleForm: React.FC<CreateRoleFormProps> = ({ onRoleCreated }) => {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Level
         </label>
-        <select
-          name="level"
+        <Dropdown
+          options={['Entry', 'Mid', 'Senior', 'Lead', 'Manager', 'Director']}
           value={formData.level}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onChange={(value) => setFormData({ ...formData, level: value as string })}
+          placeholder="Select Level"
           required
-        >
-          <option value="">Select Level</option>
-          <option value="Entry">Entry</option>
-          <option value="Mid">Mid</option>
-          <option value="Senior">Senior</option>
-          <option value="Lead">Lead</option>
-          <option value="Manager">Manager</option>
-          <option value="Director">Director</option>
-        </select>
+        />
       </div>
 
       <div>

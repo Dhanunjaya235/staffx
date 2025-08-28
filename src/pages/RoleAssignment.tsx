@@ -5,6 +5,7 @@ import { assignRole } from '../store/slices/usersSlice';
 import { useDrawer } from '../components/UI/Drawer/DrawerProvider';
 import Button from '../components/UI/Button/Button';
 import Table from '../components/UI/Table/Table';
+import Dropdown from '../components/UI/Dropdown/Dropdown';
 import { UserPlus, Shield } from 'lucide-react';
 
 const RoleAssignment: React.FC = () => {
@@ -104,37 +105,28 @@ const AssignRoleForm: React.FC<AssignRoleFormProps> = ({ user }) => {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Select User
         </label>
-        <select
+        <Dropdown
+          options={users}
+          displayKey="name"
           value={selectedUserId}
-          onChange={(e) => setSelectedUserId(e.target.value)}
+          onChange={(value) => setSelectedUserId((value as any)?.id || '')}
+          placeholder="Choose a user"
           disabled={!!user}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
           required
-        >
-          <option value="">Choose a user</option>
-          {users.map(u => (
-            <option key={u.id} value={u.id}>
-              {u.name} ({u.email})
-            </option>
-          ))}
-        </select>
+        />
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Role
         </label>
-        <select
+        <Dropdown
+          options={['Admin', 'Job Manager', 'Recruiter']}
           value={selectedRole}
-          onChange={(e) => setSelectedRole(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onChange={(value) => setSelectedRole(value as string)}
+          placeholder="Select a role"
           required
-        >
-          <option value="">Select a role</option>
-          <option value="Admin">Admin</option>
-          <option value="Job Manager">Job Manager</option>
-          <option value="Recruiter">Recruiter</option>
-        </select>
+        />
       </div>
 
       <div className="bg-blue-50 p-4 rounded-md">

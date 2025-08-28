@@ -6,6 +6,7 @@ import { useDrawer } from '../components/UI/Drawer/DrawerProvider';
 import Button from '../components/UI/Button/Button';
 import Table from '../components/UI/Table/Table';
 import Breadcrumb from '../components/UI/Breadcrumb/Breadcrumb';
+import Dropdown from '../components/UI/Dropdown/Dropdown';
 import { Plus, Edit, Eye, User } from 'lucide-react';
 
 const Resources: React.FC = () => {
@@ -259,20 +260,15 @@ const CreateResourceForm: React.FC = () => {
           Job
         </label>
         <div className="flex space-x-2">
-          <select
-            name="jobId"
+          <Dropdown
+            options={jobs}
+            displayKey="title"
             value={formData.jobId}
-            onChange={handleChange}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={(value) => setFormData({...formData, jobId: (value as any)?.id || ''})}
+            placeholder="Select Job"
+            className="flex-1"
             required
-          >
-            <option value="">Select Job</option>
-            {jobs.map(job => (
-              <option key={job.id} value={job.id}>
-                {job.title} - {job.clientName}
-              </option>
-            ))}
-          </select>
+          />
           <Button
             type="button"
             variant="secondary"
@@ -295,19 +291,13 @@ const CreateResourceForm: React.FC = () => {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Resource Type
         </label>
-        <select
-          name="resourceType"
+        <Dropdown
+          options={['Self', 'Freelancer', 'Vendor', 'Direct']}
           value={formData.resourceType}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onChange={(value) => setFormData({ ...formData, resourceType: value as string })}
+          placeholder="Select Type"
           required
-        >
-          <option value="">Select Type</option>
-          <option value="Self">Self</option>
-          <option value="Freelancer">Freelancer</option>
-          <option value="Vendor">Vendor</option>
-          <option value="Direct">Direct</option>
-        </select>
+        />
       </div>
 
       {formData.resourceType === 'Vendor' && (
@@ -316,20 +306,15 @@ const CreateResourceForm: React.FC = () => {
             Vendor
           </label>
           <div className="flex space-x-2">
-            <select
-              name="vendorId"
+            <Dropdown
+              options={vendors}
+              displayKey="company"
               value={formData.vendorId}
-              onChange={handleChange}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(value) => setFormData({...formData, vendorId: (value as any)?.id || ''})}
+              placeholder="Select Vendor"
+              className="flex-1"
               required
-            >
-              <option value="">Select Vendor</option>
-              {vendors.map(vendor => (
-                <option key={vendor.id} value={vendor.id}>
-                  {vendor.company}
-                </option>
-              ))}
-            </select>
+            />
             <Button
               type="button"
               variant="secondary"
@@ -453,19 +438,13 @@ const CreateVendorForm: React.FC<{ onVendorCreated: (vendor: any) => void }> = (
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Industry</label>
-        <select
-          name="industry"
+        <Dropdown
+          options={['Staffing', 'Consulting', 'Technology', 'Healthcare']}
           value={formData.industry}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onChange={(value) => setFormData({ ...formData, industry: value as string })}
+          placeholder="Select Industry"
           required
-        >
-          <option value="">Select Industry</option>
-          <option value="Staffing">Staffing</option>
-          <option value="Consulting">Consulting</option>
-          <option value="Technology">Technology</option>
-          <option value="Healthcare">Healthcare</option>
-        </select>
+        />
       </div>
       <div className="flex justify-end">
         <Button type="submit" variant="primary">Create Vendor</Button>
@@ -549,56 +528,40 @@ const EditResourceForm: React.FC<EditResourceFormProps> = ({ resource }) => {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Job
         </label>
-        <select
-          name="jobId"
+        <Dropdown
+          options={jobs}
+          displayKey="title"
           value={formData.jobId}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onChange={(value) => setFormData({...formData, jobId: (value as any)?.id || ''})}
+          placeholder="Select Job"
           required
-        >
-          {jobs.map(job => (
-            <option key={job.id} value={job.id}>
-              {job.title} - {job.clientName}
-            </option>
-          ))}
-        </select>
+        />
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Interview Status
         </label>
-        <select
-          name="interviewStatus"
+        <Dropdown
+          options={['Not Started', 'In Progress', 'Passed', 'Failed', 'On Hold']}
           value={formData.interviewStatus}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onChange={(value) => setFormData({ ...formData, interviewStatus: value as string })}
+          placeholder="Select Status"
           required
-        >
-          <option value="Not Started">Not Started</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Passed">Passed</option>
-          <option value="Failed">Failed</option>
-          <option value="On Hold">On Hold</option>
-        </select>
+        />
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Resource Type
         </label>
-        <select
-          name="resourceType"
+        <Dropdown
+          options={['Self', 'Freelancer', 'Vendor', 'Direct']}
           value={formData.resourceType}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onChange={(value) => setFormData({ ...formData, resourceType: value as string })}
+          placeholder="Select Type"
           required
-        >
-          <option value="Self">Self</option>
-          <option value="Freelancer">Freelancer</option>
-          <option value="Vendor">Vendor</option>
-          <option value="Direct">Direct</option>
-        </select>
+        />
       </div>
 
       <div>
