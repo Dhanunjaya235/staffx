@@ -10,6 +10,7 @@ interface SelectFieldProps<T = any> {
   displayKey?: keyof T;
   valueKey?: keyof T;
   placeholder?: string;
+  multiple?: boolean;
 }
 
 function getOptionLabel<T>(option: T, displayKey?: keyof T) {
@@ -22,7 +23,16 @@ function getOptionValue<T>(option: T, valueKey?: keyof T) {
   return String(option[valueKey]);
 }
 
-const SelectField = <T extends any>({ control, name, label, options, displayKey, valueKey, placeholder }: SelectFieldProps<T>) => {
+const SelectField = <T extends any>({ 
+  control, 
+  name, 
+  label, 
+  options, 
+  displayKey, 
+  valueKey, 
+  placeholder,
+  multiple = false 
+}: SelectFieldProps<T>) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -62,26 +72,61 @@ const SelectField = <T extends any>({ control, name, label, options, displayKey,
         name={name}
         render={({ field, fieldState }) => {
           const hasValue = field.value !== null && field.value !== undefined && field.value !== '';
+          const hasMultipleValues = multiple && Array.isArray(field.value) && field.value.length > 0;
 
           const selectedOption = useMemo(() => {
-            if (!hasValue) return undefined;
+            if (!hasValue || multiple) return undefined;
             return options.find((opt) => String(getOptionValue(opt, valueKey)) === String(field.value));
-          }, [options, field.value]);
+          }, [options, field.value, multiple]);
 
-          const inputDisplayValue = !isOpen && selectedOption
+          const selectedOptions = useMemo(() => {
+            if (!multiple || !Array.isArray(field.value)) return [];
+            return options.filter((opt) => 
+              field.value.includes(getOptionValue(opt, valueKey))
+            );
+          }, [options, field.value, multiple, valueKey]);
+
+          const inputDisplayValue = !isOpen && !multiple && selectedOption
             ? getOptionLabel(selectedOption as T, displayKey)
             : searchTerm;
 
           const handleSelect = (opt: T) => {
-            field.onChange(getOptionValue(opt, valueKey));
-            setIsOpen(false);
-            setSearchTerm('');
+            if (multiple) {
+              const optValue = getOptionValue(opt, valueKey);
+              const currentValues = Array.isArray(field.value) ? field.value : [];
+              const newValues = currentValues.includes(optValue)
+                ? currentValues.filter(v => v !== optValue)
+                : [...currentValues, optValue];
+              field.onChange(newValues);
+            } else {
+              field.onChange(getOptionValue(opt, valueKey));
+              setIsOpen(false);
+              setSearchTerm('');
+            }
           };
 
           const handleClear = (e: React.MouseEvent) => {
             e.stopPropagation();
-            field.onChange('');
+            field.onChange(multiple ? [] : '');
             setSearchTerm('');
+          };
+
+          const handleRemoveChip = (e: React.MouseEvent, valueToRemove: string) => {
+            e.stopPropagation();
+            if (multiple && Array.isArray(field.value)) {
+              const newValues = field.value.filter(v => v !== valueToRemove);
+              field.onChange(newValues);
+            }
+          };
+
+          const isOptionSelected = (opt: T) => {
+            const optValue = getOptionValue(opt, valueKey);
+            if (multiple && Array.isArray(field.value)) {
+              return field.value.includes(optValue);
+            }
+            return selectedOption
+              ? String(getOptionValue(opt, valueKey)) === String(getOptionValue(selectedOption as T, valueKey))
+              : false;
           };
 
           return (
@@ -97,6 +142,26 @@ const SelectField = <T extends any>({ control, name, label, options, displayKey,
                 onClick={() => setIsOpen(!isOpen)}
               >
                 <div className="flex items-center min-h-[54px] px-3 py-2">
+                  {multiple && hasMultipleValues && (
+                    <div className="flex flex-wrap gap-1 mr-2">
+                      {selectedOptions.map((opt) => (
+                        <span
+                          key={getOptionValue(opt, valueKey)}
+                          className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"
+                        >
+                          {getOptionLabel(opt, displayKey)}
+                          <button
+                            type="button"
+                            onClick={(e) => handleRemoveChip(e, getOptionValue(opt, valueKey))}
+                            className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  
                   <input
                     ref={inputRef}
                     type="text"
@@ -106,11 +171,11 @@ const SelectField = <T extends any>({ control, name, label, options, displayKey,
                       if (!isOpen) setIsOpen(true);
                     }}
                     onKeyDown={handleKeyDown}
-                    placeholder={hasValue ? '' : (placeholder || 'Select option...')}
+                    placeholder={hasValue && !multiple ? '' : (placeholder || 'Select option...')}
                     className="flex-1 outline-none bg-transparent text-gray-900 placeholder-gray-500"
                   />
 
-                  {hasValue && (
+                  {(hasValue || hasMultipleValues) && (
                     <button
                       type="button"
                       onClick={handleClear}
@@ -133,9 +198,7 @@ const SelectField = <T extends any>({ control, name, label, options, displayKey,
                       <div className="px-3 py-2 text-gray-500 text-sm">No options available</div>
                     ) : (
                       filteredOptions.map((opt, idx) => {
-                        const isSelected = selectedOption
-                          ? String(getOptionValue(opt, valueKey)) === String(getOptionValue(selectedOption as T, valueKey))
-                          : false;
+                        const isSelected = isOptionSelected(opt);
                         return (
                           <div
                             key={idx}
@@ -144,8 +207,16 @@ const SelectField = <T extends any>({ control, name, label, options, displayKey,
                             }`}
                             onClick={() => handleSelect(opt)}
                           >
+                            {multiple && (
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                readOnly
+                                className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                            )}
                             <span className="flex-1">{getOptionLabel(opt, displayKey)}</span>
-                            {isSelected && <Check className="w-4 h-4 text-blue-600" />}
+                            {!multiple && isSelected && <Check className="w-4 h-4 text-blue-600" />}
                           </div>
                         );
                       })

@@ -12,6 +12,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import SelectField from '../components/forms-fields/SelectField';
 import { useApi } from '../hooks/useApi';
 import { usersApi } from '../services/api/usersApi';
+import { ROLE_DISPLAY_NAMES, Roles } from '../store/slices/employeeSlice';
 import { UserPlus, Shield } from 'lucide-react';
 
 const RoleAssignment: React.FC = () => {
@@ -19,23 +20,38 @@ const RoleAssignment: React.FC = () => {
   const { users } = useSelector((state: RootState) => state.users);
   const { openDrawer } = useDrawer();
   
+  const roleDisplayList = Object.values(ROLE_DISPLAY_NAMES);
+
   const columns = [
     { key: 'name', label: 'Name', filterable: true },
     { key: 'email', label: 'Email', filterable: true },
     { 
-      key: 'role', 
-      label: 'Role', 
+      key: 'roles', 
+      label: 'Roles', 
       filterable: true,
-      filterOptions: ['Admin', 'Job Manager', 'Recruiter'],
-      render: (role: string) => (
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-          role === 'Admin' ? 'bg-red-100 text-red-800' :
-          role === 'Job Manager' ? 'bg-blue-100 text-blue-800' :
-          'bg-green-100 text-green-800'
-        }`}>
-          {role}
-        </span>
-      )
+      filterOptions: roleDisplayList,
+      render: (_: any, user: any) => {
+        const rawRoles: string[] = Array.isArray(user?.roles)
+          ? user.roles
+          : user?.role
+          ? [user.role]
+          : [];
+        const toDisplay = (r: string) => {
+          // Support either backend constants (e.g., 'ADMIN') or human labels (e.g., 'Admin')
+          const displayFromConstant = (ROLE_DISPLAY_NAMES as any)[r];
+          if (displayFromConstant) return displayFromConstant;
+          return r;
+        };
+        return (
+          <div className="flex flex-wrap gap-2">
+            {rawRoles.map((r: string) => (
+              <span key={r} className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                {toDisplay(r)}
+              </span>
+            ))}
+          </div>
+        );
+      }
     },
     { key: 'department', label: 'Department', filterable: true },
     {
@@ -56,7 +72,8 @@ const RoleAssignment: React.FC = () => {
   const openAssignRoleDrawer = (user?: any) => {
     openDrawer({
       title: user ? `Edit Role - ${user.name}` : 'Assign Role',
-      content: <AssignRoleForm user={user} />
+      content: <AssignRoleForm user={user} />,
+      onClose: () => {}
     });
   };
 
@@ -96,20 +113,34 @@ const AssignRoleForm: React.FC<AssignRoleFormProps> = ({ user }) => {
 
   const schema = yup.object({
     userId: yup.string().required('User is required'),
-    roleId: yup.string().required('Role is required'),
+    roles: yup.array(yup.string()).min(1, 'Select at least one role'),
   });
 
-  const { control, handleSubmit } = useForm({
-    defaultValues: { userId: user?.id || '', roleId: '' },
+  const { control, handleSubmit, watch } = useForm({
+    defaultValues: {
+      userId: user?.id || '',
+      roles: Array.isArray(user?.roles)
+        ? user.roles.map((r: string) => (ROLE_DISPLAY_NAMES as any)[r] || r)
+        : user?.role
+        ? [(ROLE_DISPLAY_NAMES as any)[user.role] || user.role]
+        : [],
+    },
     resolver: yupResolver(schema),
   });
 
   const onSubmit = async (values: any) => {
-    const res = await assignRoleApi.execute(values.userId, values.roleId);
-    dispatch(assignRole({ userId: values.userId, role: res.role || 'Recruiter' }));
+    const selectedDisplays: string[] = values.roles || [];
+    const displayToConstant = (display: string) => {
+      const entry = Object.entries(ROLE_DISPLAY_NAMES).find(([, v]) => v === display);
+      return (entry?.[0] as keyof typeof Roles) || display;
+    };
+    const roleConstants = selectedDisplays.map(displayToConstant);
+    for (const roleConst of roleConstants) {
+      await assignRoleApi.execute(values.userId, roleConst as string);
+    }
   };
 
-  const roles = [
+  const roleDisplayList = [
     { id: 'admin', name: 'Admin' },
     { id: 'job_manager', name: 'Job Manager' },
     { id: 'recruiter', name: 'Recruiter' },
@@ -118,7 +149,7 @@ const AssignRoleForm: React.FC<AssignRoleFormProps> = ({ user }) => {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
       <SelectField control={control} name="userId" label="Select User" options={users as any} displayKey={'name' as any} valueKey={'id' as any} />
-      <SelectField control={control} name="roleId" label="Role" options={roles as any} displayKey={'name' as any} valueKey={'id' as any} />
+      <SelectField control={control} name="roles" label="Roles" options={roleDisplayList} displayKey={'name' as any} valueKey={'id' as any}  multiple={true} />
 
       <div className="bg-blue-50 p-4 rounded-md">
         <h4 className="font-medium text-blue-900 mb-2">Role Permissions:</h4>
@@ -128,7 +159,7 @@ const AssignRoleForm: React.FC<AssignRoleFormProps> = ({ user }) => {
       </div>
 
       <div className="flex justify-end space-x-3">
-        <Button type="submit" variant="primary">{user ? 'Update Role' : 'Assign Role'}</Button>
+        <Button type="submit" variant="primary">{user ? 'Update Roles' : 'Assign Roles'}</Button>
       </div>
     </form>
   );
