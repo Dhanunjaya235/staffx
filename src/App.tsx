@@ -14,8 +14,8 @@ import GlobalLoader from './components/UI/GlobalLoader/GlobalLoader';
 function App() {
   return (
     <Provider store={store}>
+      <GlobalLoader />
       <Router>
-        <GlobalLoader />
         <Layout>
           <Routes>
             <Route path="/" element={<Navigate to="/clients" replace />} />

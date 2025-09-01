@@ -1,22 +1,43 @@
 import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
 import { RootState } from '../store';
 import { addVendor } from '../store/slices/vendorsSlice';
 import { useDrawer } from '../components/UI/Drawer/DrawerProvider';
+import { useForm, useFieldArray } from 'react-hook-form';
+import * as yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
+import TextField from '../components/forms-fields/TextField';
+import SelectField from '../components/forms-fields/SelectField';
+import FileUploadField from '../components/forms-fields/FileUploadField';
 import { useApi } from '../hooks/useApi';
-import { vendorsApi } from '../services/api';
+import { vendorsApi } from '../services/api/vendorsApi';
+import { setVendors } from '../store/slices/vendorsSlice';
 import Button from '../components/UI/Button/Button';
 import Table from '../components/UI/Table/Table';
 import Dropdown from '../components/UI/Dropdown/Dropdown';
 import { Truck, Plus, Users, Edit } from 'lucide-react';
+import Resources from './Resources';
+import Breadcrumb from '../components/UI/Breadcrumb/Breadcrumb';
+import ResourceDetails from './ResourceDetails';
 
 const Vendors: React.FC = () => {
-  const navigate = useNavigate();
   const dispatch = useDispatch();
   const { vendors } = useSelector((state: RootState) => state.vendors);
   const { openDrawer } = useDrawer();
   const createVendorApi = useApi(vendorsApi.create);
+  const getVendorsApi = useApi(vendorsApi.getAll);
+
+  const [viewLevel, setViewLevel] = React.useState<'vendors' | 'resources' | 'resourceDetails'>('vendors');
+  const [selectedVendorId, setSelectedVendorId] = React.useState<string | undefined>(undefined);
+  const [selectedResourceId, setSelectedResourceId] = React.useState<string | undefined>(undefined);
+  const [selectedResourceName, setSelectedResourceName] = React.useState<string | undefined>(undefined);
+
+  React.useEffect(() => {
+    (async () => {
+      const res = await getVendorsApi.execute();
+      dispatch(setVendors(res));
+    })();
+  }, [dispatch]);
 
   const columns = [
     { key: 'company', label: 'Company Name', filterable: true },
@@ -29,7 +50,10 @@ const Vendors: React.FC = () => {
       label: 'Resources',
       render: (count: number, vendor: any) => (
         <button
-          onClick={() => navigate(`/resources?vendor=${vendor.id}`)}
+          onClick={() => {
+            setSelectedVendorId(vendor.id);
+            setViewLevel('resources');
+          }}
           className="flex items-center text-cyan-600 hover:text-cyan-800 font-medium"
         >
           <Users className="w-4 h-4 mr-1" />
@@ -104,6 +128,53 @@ const Vendors: React.FC = () => {
       console.error('Failed to update vendor:', error);
     }
   };
+  if (viewLevel === 'resourceDetails' && selectedVendorId && selectedResourceId) {
+    return (
+      <div className="p-6">
+        <div className="mb-4">
+          <Breadcrumb
+            home={{ label: 'Home', onClick: () => { setViewLevel('vendors'); setSelectedVendorId(undefined); setSelectedResourceId(undefined); setSelectedResourceName(undefined); } }}
+            items={[
+              { label: 'Vendors', onClick: () => { setViewLevel('vendors'); setSelectedVendorId(undefined); setSelectedResourceId(undefined); setSelectedResourceName(undefined); } },
+              { label: 'Resources', onClick: () => { setViewLevel('resources'); setSelectedResourceId(undefined); setSelectedResourceName(undefined); } },
+              ...(selectedResourceName ? [{ label: selectedResourceName }] : []),
+            ]}
+          />
+        </div>
+        <ResourceDetails embedded resourceId={selectedResourceId} showBreadcrumb={false} />
+      </div>
+    );
+  }
+
+  if (viewLevel === 'resources' && selectedVendorId) {
+    return (
+      <div className="p-6">
+        <div className="mb-4">
+          <Breadcrumb
+            home={{ label: 'Home', onClick: () => { setViewLevel('vendors'); setSelectedVendorId(undefined); } }}
+            items={[
+              { label: 'Vendors', onClick: () => setViewLevel('vendors') },
+              { label: 'Resources' },
+            ]}
+          />
+        </div>
+        <Resources
+          embedded
+          showBreadcrumb={false}
+          breadcrumbItems={[
+            { label: 'Vendors', onClick: () => setViewLevel('vendors') },
+            { label: 'Resources' },
+          ]}
+          onOpenResourceDetails={(resource) => {
+            setSelectedResourceId(resource?.id);
+            setSelectedResourceName(resource?.name);
+            setViewLevel('resourceDetails');
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -134,103 +205,70 @@ interface CreateVendorFormProps {
 }
 
 const CreateVendorForm: React.FC<CreateVendorFormProps> = ({ onVendorCreated }) => {
-  const [formData, setFormData] = React.useState({
-    name: '',
-    email: '',
-    phone: '',
-    company: '',
-    industry: ''
+  const createVendor = useApi(vendorsApi.create);
+
+  const schema = yup.object({
+    name: yup.string().required('Name is required'),
+    email: yup.string().email('Invalid email').required('Email is required'),
+    phone: yup.string().required('Phone is required'),
+    company: yup.string().required('Company is required'),
+    industry: yup.string().required('Industry is required'),
+    location: yup.string().nullable(),
+    logo: yup.mixed().nullable(),
+    contacts: yup.array().of(
+      yup.object({
+        name: yup.string().required('Contact name is required'),
+        role: yup.string().required('Role is required'),
+        phone: yup.string().required('Phone is required'),
+        email: yup.string().email('Invalid email').required('Email is required'),
+      })
+    ).default([]),
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newVendor = {
-      ...formData,
-      resourcesCount: 0,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-    onVendorCreated(newVendor);
-  };
+  const { control, handleSubmit } = useForm({
+    defaultValues: { name: '', email: '', phone: '', company: '', industry: '', location: '', logo: null, contacts: [] as any[] },
+    resolver: yupResolver(schema),
+  });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const { fields, append, remove } = useFieldArray({ control, name: 'contacts' });
+
+  const onSubmit = async (values: any) => {
+    const res = await createVendor.execute(values);
+    onVendorCreated({ ...values, resourcesCount: 0, createdAt: new Date().toISOString().split('T')[0], id: res.id || Date.now().toString() });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-6 space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Contact Name
-        </label>
-        <input
-          type="text"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          required
-        />
-      </div>
+    <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+      <TextField control={control} name="name" label="Contact Name" />
+      <TextField control={control} name="email" label="Email" type="email" />
+      <TextField control={control} name="phone" label="Phone" type="tel" />
+      <TextField control={control} name="company" label="Company" />
+      <SelectField control={control} name="industry" label="Industry" options={["Staffing","Consulting","Technology","Healthcare"]} />
+      <TextField control={control} name="location" label="Location" />
+      <FileUploadField control={control} name="logo" label="Vendor Logo" accept="image/*" />
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Email
-        </label>
-        <input
-          type="email"
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Phone
-        </label>
-        <input
-          type="tel"
-          name="phone"
-          value={formData.phone}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Company
-        </label>
-        <input
-          type="text"
-          name="company"
-          value={formData.company}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Industry
-        </label>
-        <Dropdown
-          options={['Staffing', 'Consulting', 'Technology', 'Healthcare']}
-          value={formData.industry}
-          onChange={(value) => setFormData({ ...formData, industry: value as string })}
-          placeholder="Select Industry"
-          required
-        />
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm font-medium text-gray-700">Contacts</label>
+          <Button type="button" variant="secondary" size="sm" onClick={() => append({ name: '', role: '', phone: '', email: '' })}>Add Contact</Button>
+        </div>
+        <div className="space-y-4">
+          {fields.map((field, idx) => (
+            <div key={field.id} className="grid grid-cols-2 gap-4 border p-3 rounded">
+              <TextField control={control} name={`contacts.${idx}.name`} label="Name" />
+              <TextField control={control} name={`contacts.${idx}.role`} label="Role" />
+              <TextField control={control} name={`contacts.${idx}.phone`} label="Phone" />
+              <TextField control={control} name={`contacts.${idx}.email`} label="Email" />
+              <div className="col-span-2 flex justify-end">
+                <Button type="button" variant="secondary" size="sm" onClick={() => remove(idx)}>Remove</Button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="flex justify-end">
-        <Button type="submit" variant="primary">
-          Create Vendor
-        </Button>
+        <Button type="submit" variant="primary">Create Vendor</Button>
       </div>
     </form>
   );

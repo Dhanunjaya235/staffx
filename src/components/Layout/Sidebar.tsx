@@ -36,13 +36,13 @@ const Sidebar: React.FC = () => {
             roles: ['Admin', 'Job Manager', 'Recruiter']
         },
         {
-            name: 'Jobs',
+            name: 'Requirements',
             path: '/jobs',
             icon: Briefcase,
             roles: ['Admin', 'Job Manager', 'Recruiter']
         },
         {
-            name: 'Resources',
+            name: 'Candidates',
             path: '/resources',
             icon: UserCheck,
             roles: ['Admin', 'Job Manager', 'Recruiter']

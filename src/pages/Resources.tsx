@@ -1,24 +1,54 @@
 import React from 'react';
-import { useSelector } from 'react-redux';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { useSearchParams } from 'react-router-dom';
 import { RootState } from '../store';
 import { useDrawer } from '../components/UI/Drawer/DrawerProvider';
 import Button from '../components/UI/Button/Button';
 import Table from '../components/UI/Table/Table';
 import Breadcrumb from '../components/UI/Breadcrumb/Breadcrumb';
-import Dropdown from '../components/UI/Dropdown/Dropdown';
-import { Plus, Edit, Eye, User } from 'lucide-react';
+import ResourceDetails from './ResourceDetails';
+// removed page-embedded field components after refactor
+import { useApi } from '../hooks/useApi';
+import { resourcesApi } from '../services/api/resourcesApi';
+import { setResources } from '../store/slices/resourcesSlice';
+import { Plus, Edit, Eye } from 'lucide-react';
+import ResourceCreateForm from '../components/new-forms/ResourceCreateForm';
+import ResourceEditForm from '../components/new-forms/ResourceEditForm';
+import VendorCreateForm from '../components/new-forms/VendorCreateForm';
 
-const Resources: React.FC = () => {
-  const navigate = useNavigate();
+interface ResourcesProps {
+  embedded?: boolean;
+  clientId?: string;
+  jobId?: string;
+  breadcrumbItems?: { label: string; onClick?: () => void }[];
+  onOpenResourceDetails?: (resource: any) => void;
+  showBreadcrumb?: boolean;
+}
+
+const Resources: React.FC<ResourcesProps> = ({ embedded = false, clientId, jobId, breadcrumbItems, onOpenResourceDetails, showBreadcrumb = true }) => {
+  // navigate no longer used after inline views
   const [searchParams] = useSearchParams();
-  const clientFilter = searchParams.get('client');
-  const jobFilter = searchParams.get('job');
+  const clientFilter = embedded ? clientId || null : searchParams.get('client');
+  const jobFilter = embedded ? jobId || null : searchParams.get('job');
   
+  const dispatch = useDispatch();
   const { resources } = useSelector((state: RootState) => state.resources);
   const { clients } = useSelector((state: RootState) => state.clients);
   const { jobs } = useSelector((state: RootState) => state.jobs);
   const { openDrawer } = useDrawer();
+  const getResources = useApi(resourcesApi.getAll);
+  const createResource = useApi(resourcesApi.create);
+  const updateResource = useApi(resourcesApi.update);
+  const [inlineView, setInlineView] = React.useState<'list'|'details'>(embedded ? 'list' : 'list');
+  const [selectedResourceId, setSelectedResourceId] = React.useState<string | undefined>(undefined);
+  const [selectedResourceName, setSelectedResourceName] = React.useState<string | undefined>(undefined);
+
+  React.useEffect(() => {
+    (async () => {
+      const res = await getResources.execute();
+      dispatch(setResources(res));
+    })();
+  }, [dispatch]);
 
   let filteredResources = resources;
   if (clientFilter) {
@@ -36,11 +66,16 @@ const Resources: React.FC = () => {
     ? jobs.find(j => j.id === jobFilter)?.title 
     : null;
 
-  const breadcrumbItems = [
-    { label: 'Resources', path: '/resources' },
-    ...(clientName ? [{ label: clientName }] : []),
-    ...(jobName ? [{ label: jobName }] : [])
-  ];
+  const internalBreadcrumb = breadcrumbItems ?? (
+    inlineView === 'details' && !embedded
+      ? [
+          { label: 'Resources', onClick: () => { setInlineView('list'); setSelectedResourceId(undefined); setSelectedResourceName(undefined); } },
+          ...(clientName ? [{ label: clientName }] as { label: string; onClick?: () => void }[] : []),
+          ...(jobName ? [{ label: jobName }] as { label: string; onClick?: () => void }[] : []),
+          ...(selectedResourceName ? [{ label: selectedResourceName }] as { label: string; onClick?: () => void }[] : [])
+        ]
+      : []
+  );
 
   const columns = [
     { 
@@ -49,7 +84,15 @@ const Resources: React.FC = () => {
       filterable: true,
       render: (name: string, resource: any) => (
         <button
-          onClick={() => navigate(`/resources/${resource.id}`)}
+          onClick={() => {
+            if (embedded && onOpenResourceDetails) {
+              onOpenResourceDetails(resource);
+            } else {
+              setInlineView('details');
+              setSelectedResourceId(resource.id);
+              setSelectedResourceName(resource.name);
+            }
+          }}
           className="text-blue-600 hover:text-blue-800 font-medium"
         >
           {name}
@@ -97,12 +140,20 @@ const Resources: React.FC = () => {
     {
       key: 'actions',
       label: 'Actions',
-      render: (_, resource: any) => (
+      render: (_: unknown, resource: any) => (
         <div className="flex space-x-2">
           <Button
             size="sm"
             variant="secondary"
-            onClick={() => navigate(`/resources/${resource.id}`)}
+            onClick={() => {
+              if (embedded && onOpenResourceDetails) {
+                onOpenResourceDetails(resource);
+              } else {
+                setInlineView('details');
+                setSelectedResourceId(resource.id);
+                setSelectedResourceName(resource.name);
+              }
+            }}
             icon={Eye}
           >
             View
@@ -123,7 +174,28 @@ const Resources: React.FC = () => {
   const openCreateResourceDrawer = () => {
     openDrawer({
       title: 'Create New Resource',
-      content: <CreateResourceForm />,
+      content: (
+        <ResourceCreateForm
+          onCreateJob={(setJobId) => {
+            openDrawer({
+              title: 'Create New Job',
+              content: <CreateJobForm onJobCreated={(job) => setJobId(job.id)} />,
+              onClose: () => {}
+            });
+          }}
+          onCreateVendor={(setVendorId) => {
+            openDrawer({
+              title: 'Create New Vendor',
+              content: <VendorCreateForm onVendorCreated={(vendor) => setVendorId(vendor.id)} />,
+              onClose: () => {}
+            });
+          }}
+          onSubmit={async (values) => {
+            const payload = { ...values };
+            await createResource.execute(payload);
+          }}
+        />
+      ),
       onClose: () => {}
     });
   };
@@ -131,16 +203,44 @@ const Resources: React.FC = () => {
   const openEditResourceDrawer = (resource: any) => {
     openDrawer({
       title: `Edit Resource - ${resource.name}`,
-      content: <EditResourceForm resource={resource} />,
+      content: (
+        <ResourceEditForm
+          resource={resource}
+          onSubmit={async (values) => {
+            await updateResource.execute(resource.id, values);
+          }}
+        />
+      ),
       onClose: () => {}
     });
   };
 
+  if (!embedded && inlineView === 'details' && selectedResourceId) {
+    return (
+      <div className="p-6">
+        {showBreadcrumb && (
+          <div className="mb-4">
+            <Breadcrumb
+              home={{ label: 'Home', onClick: () => { setInlineView('list'); setSelectedResourceId(undefined); setSelectedResourceName(undefined); } }}
+              items={internalBreadcrumb}
+            />
+          </div>
+        )}
+        <ResourceDetails embedded resourceId={selectedResourceId} showBreadcrumb={false} />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
-      <div className="mb-4">
-        <Breadcrumb items={breadcrumbItems} />
-      </div>
+      {showBreadcrumb && internalBreadcrumb.length > 0 && (
+        <div className="mb-4">
+          <Breadcrumb
+            home={!embedded ? { label: 'Home', onClick: () => { setInlineView('list'); setSelectedResourceId(undefined); setSelectedResourceName(undefined); } } : undefined}
+            items={internalBreadcrumb}
+          />
+        </div>
+      )}
 
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -167,440 +267,11 @@ const Resources: React.FC = () => {
   );
 };
 
-const CreateResourceForm: React.FC = () => {
-  const { jobs } = useSelector((state: RootState) => state.jobs);
-  const { clients } = useSelector((state: RootState) => state.clients);
-  const { vendors } = useSelector((state: RootState) => state.vendors);
-  const { openDrawer } = useDrawer();
-
-  const [formData, setFormData] = React.useState({
-    name: '',
-    email: '',
-    phone: '',
-    jobId: '',
-    resourceType: '',
-    experience: '',
-    skills: '',
-    vendorId: ''
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Creating resource:', formData);
-  };
-
-  const selectedJob = jobs.find(j => j.id === formData.jobId);
-
-  const openCreateJobDrawer = () => {
-    openDrawer({
-      title: 'Create New Job',
-      content: <CreateJobForm onJobCreated={(job) => setFormData({...formData, jobId: job.id})} />,
-      onClose: () => {}
-    });
-  };
-
-  const openCreateVendorDrawer = () => {
-    openDrawer({
-      title: 'Create New Vendor',
-      content: <CreateVendorForm onVendorCreated={(vendor) => setFormData({...formData, vendorId: vendor.id})} />,
-      onClose: () => {}
-    });
-  };
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="p-6 space-y-6">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Full Name
-          </label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Email
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Phone
-        </label>
-        <input
-          type="tel"
-          name="phone"
-          value={formData.phone}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Job
-        </label>
-        <div className="flex space-x-2">
-          <Dropdown
-            options={jobs}
-            displayKey="title"
-            value={formData.jobId}
-            onChange={(value) => setFormData({...formData, jobId: (value as any)?.id || ''})}
-            placeholder="Select Job"
-            className="flex-1"
-            required
-          />
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={openCreateJobDrawer}
-            icon={Plus}
-          >
-            New Job
-          </Button>
-        </div>
-        {selectedJob && (
-          <div className="mt-2 p-3 bg-gray-50 rounded-md">
-            <p className="text-sm text-gray-700">
-              <strong>Client:</strong> {selectedJob.clientName}
-            </p>
-          </div>
-        )}
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Resource Type
-        </label>
-        <Dropdown
-          options={['Self', 'Freelancer', 'Vendor', 'Direct']}
-          value={formData.resourceType}
-          onChange={(value) => setFormData({ ...formData, resourceType: value as string })}
-          placeholder="Select Type"
-          required
-        />
-      </div>
-
-      {formData.resourceType === 'Vendor' && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Vendor
-          </label>
-          <div className="flex space-x-2">
-            <Dropdown
-              options={vendors}
-              displayKey="company"
-              value={formData.vendorId}
-              onChange={(value) => setFormData({...formData, vendorId: (value as any)?.id || ''})}
-              placeholder="Select Vendor"
-              className="flex-1"
-              required
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={openCreateVendorDrawer}
-              icon={Plus}
-            >
-              New Vendor
-            </Button>
-          </div>
-        </div>
-      )}
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Experience (years)
-        </label>
-        <input
-          type="number"
-          name="experience"
-          value={formData.experience}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Skills (comma-separated)
-        </label>
-        <input
-          type="text"
-          name="skills"
-          value={formData.skills}
-          onChange={handleChange}
-          placeholder="React, TypeScript, Node.js"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div className="flex justify-end">
-        <Button type="submit" variant="primary">
-          Create Resource
-        </Button>
-      </div>
-    </form>
-  );
-};
+// moved CreateResourceForm into new-forms
 
 // Create Vendor Form Component
-const CreateVendorForm: React.FC<{ onVendorCreated: (vendor: any) => void }> = ({ onVendorCreated }) => {
-  const [formData, setFormData] = React.useState({
-    name: '',
-    email: '',
-    phone: '',
-    company: '',
-    industry: ''
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newVendor = {
-      id: Date.now().toString(),
-      ...formData,
-      resourcesCount: 0,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-    onVendorCreated(newVendor);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="p-6 space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Contact Name</label>
-        <input
-          type="text"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-        <input
-          type="email"
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-        <input
-          type="tel"
-          name="phone"
-          value={formData.phone}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Company</label>
-        <input
-          type="text"
-          name="company"
-          value={formData.company}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Industry</label>
-        <Dropdown
-          options={['Staffing', 'Consulting', 'Technology', 'Healthcare']}
-          value={formData.industry}
-          onChange={(value) => setFormData({ ...formData, industry: value as string })}
-          placeholder="Select Industry"
-          required
-        />
-      </div>
-      <div className="flex justify-end">
-        <Button type="submit" variant="primary">Create Vendor</Button>
-      </div>
-    </form>
-  );
-};
-interface EditResourceFormProps {
-  resource: any;
-}
-
-const EditResourceForm: React.FC<EditResourceFormProps> = ({ resource }) => {
-  const { jobs } = useSelector((state: RootState) => state.jobs);
-
-  const [formData, setFormData] = React.useState({
-    name: resource.name,
-    email: resource.email,
-    phone: resource.phone,
-    jobId: resource.jobId,
-    resourceType: resource.resourceType,
-    experience: resource.experience.toString(),
-    skills: resource.skills.join(', '),
-    interviewStatus: resource.interviewStatus
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Updating resource:', formData);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="p-6 space-y-6">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Full Name
-          </label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Email
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Phone
-        </label>
-        <input
-          type="tel"
-          name="phone"
-          value={formData.phone}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Job
-        </label>
-        <Dropdown
-          options={jobs}
-          displayKey="title"
-          value={formData.jobId}
-          onChange={(value) => setFormData({...formData, jobId: (value as any)?.id || ''})}
-          placeholder="Select Job"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Interview Status
-        </label>
-        <Dropdown
-          options={['Not Started', 'In Progress', 'Passed', 'Failed', 'On Hold']}
-          value={formData.interviewStatus}
-          onChange={(value) => setFormData({ ...formData, interviewStatus: value as string })}
-          placeholder="Select Status"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Resource Type
-        </label>
-        <Dropdown
-          options={['Self', 'Freelancer', 'Vendor', 'Direct']}
-          value={formData.resourceType}
-          onChange={(value) => setFormData({ ...formData, resourceType: value as string })}
-          placeholder="Select Type"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Experience (years)
-        </label>
-        <input
-          type="number"
-          name="experience"
-          value={formData.experience}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Skills (comma-separated)
-        </label>
-        <input
-          type="text"
-          name="skills"
-          value={formData.skills}
-          onChange={handleChange}
-          placeholder="React, TypeScript, Node.js"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div className="flex justify-end">
-        <Button type="submit" variant="primary">
-          Update Resource
-        </Button>
-      </div>
-    </form>
-  );
-};
+// moved CreateVendorForm into new-forms
+// moved EditResourceForm into new-forms
 
 // Simple placeholder for CreateJobForm - would be similar to Jobs page
 const CreateJobForm: React.FC<{ onJobCreated: (job: any) => void }> = ({ onJobCreated }) => {

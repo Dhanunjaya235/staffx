@@ -6,6 +6,12 @@ import { useDrawer } from '../components/UI/Drawer/DrawerProvider';
 import Button from '../components/UI/Button/Button';
 import Table from '../components/UI/Table/Table';
 import Dropdown from '../components/UI/Dropdown/Dropdown';
+import { useForm } from 'react-hook-form';
+import * as yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
+import SelectField from '../components/forms-fields/SelectField';
+import { useApi } from '../hooks/useApi';
+import { usersApi } from '../services/api/usersApi';
 import { UserPlus, Shield } from 'lucide-react';
 
 const RoleAssignment: React.FC = () => {
@@ -86,80 +92,43 @@ interface AssignRoleFormProps {
 const AssignRoleForm: React.FC<AssignRoleFormProps> = ({ user }) => {
   const dispatch = useDispatch();
   const { users } = useSelector((state: RootState) => state.users);
-  const [selectedUserId, setSelectedUserId] = useState(user?.id || '');
-  const [selectedRole, setSelectedRole] = useState(user?.role || '');
+  const assignRoleApi = useApi(usersApi.assignRole);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (selectedUserId && selectedRole) {
-      dispatch(assignRole({ 
-        userId: selectedUserId, 
-        role: selectedRole as 'Admin' | 'Job Manager' | 'Recruiter'
-      }));
-    }
+  const schema = yup.object({
+    userId: yup.string().required('User is required'),
+    roleId: yup.string().required('Role is required'),
+  });
+
+  const { control, handleSubmit } = useForm({
+    defaultValues: { userId: user?.id || '', roleId: '' },
+    resolver: yupResolver(schema),
+  });
+
+  const onSubmit = async (values: any) => {
+    const res = await assignRoleApi.execute(values.userId, values.roleId);
+    dispatch(assignRole({ userId: values.userId, role: res.role || 'Recruiter' }));
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="p-6 space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Select User
-        </label>
-        <Dropdown
-          options={users}
-          displayKey="name"
-          value={selectedUserId}
-          onChange={(value) => setSelectedUserId((value as any)?.id || '')}
-          placeholder="Choose a user"
-          disabled={!!user}
-          required
-        />
-      </div>
+  const roles = [
+    { id: 'admin', name: 'Admin' },
+    { id: 'job_manager', name: 'Job Manager' },
+    { id: 'recruiter', name: 'Recruiter' },
+  ];
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Role
-        </label>
-        <Dropdown
-          options={['Admin', 'Job Manager', 'Recruiter']}
-          value={selectedRole}
-          onChange={(value) => setSelectedRole(value as string)}
-          placeholder="Select a role"
-          required
-        />
-      </div>
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+      <SelectField control={control} name="userId" label="Select User" options={users as any} displayKey={'name' as any} valueKey={'id' as any} />
+      <SelectField control={control} name="roleId" label="Role" options={roles as any} displayKey={'name' as any} valueKey={'id' as any} />
 
       <div className="bg-blue-50 p-4 rounded-md">
         <h4 className="font-medium text-blue-900 mb-2">Role Permissions:</h4>
         <ul className="text-sm text-blue-800 space-y-1">
-          {selectedRole === 'Admin' && (
-            <>
-              <li>• Assign roles to other employees</li>
-              <li>• Full access to all features</li>
-              <li>• Manage users and system settings</li>
-            </>
-          )}
-          {selectedRole === 'Job Manager' && (
-            <>
-              <li>• Manage clients and jobs</li>
-              <li>• View and manage resources</li>
-              <li>• Create and edit job postings</li>
-            </>
-          )}
-          {selectedRole === 'Recruiter' && (
-            <>
-              <li>• Manage resources and candidates</li>
-              <li>• Conduct interviews and evaluations</li>
-              <li>• View assigned jobs and clients</li>
-            </>
-          )}
+          <li>• Permissions vary by role.</li>
         </ul>
       </div>
 
       <div className="flex justify-end space-x-3">
-        <Button type="submit" variant="primary">
-          {user ? 'Update Role' : 'Assign Role'}
-        </Button>
+        <Button type="submit" variant="primary">{user ? 'Update Role' : 'Assign Role'}</Button>
       </div>
     </form>
   );

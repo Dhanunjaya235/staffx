@@ -5,18 +5,32 @@ import { RootState } from '../store';
 import { useDrawer } from '../components/UI/Drawer/DrawerProvider';
 import Button from '../components/UI/Button/Button';
 import Breadcrumb from '../components/UI/Breadcrumb/Breadcrumb';
-import Dropdown from '../components/UI/Dropdown/Dropdown';
+// import Dropdown from '../components/UI/Dropdown/Dropdown';
+import RoundCreateForm from '../components/new-forms/RoundCreateForm';
+import RoundEditForm from '../components/new-forms/RoundEditForm';
+// import { setRounds } from '../store/slices/resourcesSlice';
 import { ArrowLeft, Plus, Edit, Phone, Mail, Calendar, User, ChevronDown, ChevronRight } from 'lucide-react';
 
-const ResourceDetails: React.FC = () => {
+interface ResourceDetailsProps {
+  embedded?: boolean;
+  resourceId?: string;
+  breadcrumbItems?: { label: string; onClick?: () => void }[];
+  showBreadcrumb?: boolean;
+}
+
+const ResourceDetails: React.FC<ResourceDetailsProps> = ({ embedded = false, resourceId, breadcrumbItems, showBreadcrumb = true }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  // const dispatch = useDispatch();
   const { resources, rounds } = useSelector((state: RootState) => state.resources);
   const { openDrawer } = useDrawer();
   const [expandedRounds, setExpandedRounds] = useState<string[]>([]);
 
-  const resource = resources.find(r => r.id === id);
+  const resource = resources.find(r => r.id === (embedded ? resourceId : id));
   const resourceRounds = rounds.filter(r => r.resourceId === id);
+
+  // Ideally fetch rounds by resource
+  // Skipped API fetch here if rounds already in store
 
   if (!resource) {
     return (
@@ -31,7 +45,7 @@ const ResourceDetails: React.FC = () => {
     );
   }
 
-  const breadcrumbItems = [
+  const internalBreadcrumb = breadcrumbItems ?? [
     { label: 'Resources', path: '/resources' },
     { label: resource.name }
   ];
@@ -47,7 +61,7 @@ const ResourceDetails: React.FC = () => {
   const openAddRoundDrawer = () => {
     openDrawer({
       title: `Add Interview Round - ${resource.name}`,
-      content: <AddRoundForm resource={resource} />,
+      content: <RoundCreateForm resource={resource} />,
       onClose: () => {}
     });
   };
@@ -55,27 +69,31 @@ const ResourceDetails: React.FC = () => {
   const openEditRoundDrawer = (round: any) => {
     openDrawer({
       title: `Edit Round ${round.roundNumber} - ${round.roundType}`,
-      content: <EditRoundForm round={round} />,
+      content: <RoundEditForm round={round} />,
       onClose: () => {}
     });
   };
 
   return (
     <div className="p-6">
-      <div className="mb-4">
-        <Breadcrumb items={breadcrumbItems} />
-      </div>
+      {showBreadcrumb && (
+        <div className="mb-4">
+          <Breadcrumb items={internalBreadcrumb} />
+        </div>
+      )}
 
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
-          <Button
-            variant="secondary"
-            onClick={() => navigate('/resources')}
-            icon={ArrowLeft}
-            className="mr-4"
-          >
-            Back
-          </Button>
+          {!embedded && (
+            <Button
+              variant="secondary"
+              onClick={() => navigate('/resources')}
+              icon={ArrowLeft}
+              className="mr-4"
+            >
+              Back
+            </Button>
+          )}
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{resource.name}</h1>
             <p className="text-gray-600">Resource Details</p>
@@ -288,196 +306,6 @@ const ResourceDetails: React.FC = () => {
   );
 };
 
-interface AddRoundFormProps {
-  resource: any;
-}
-
-const AddRoundForm: React.FC<AddRoundFormProps> = ({ resource }) => {
-  const [formData, setFormData] = React.useState({
-    roundType: '',
-    interviewer: '',
-    date: '',
-    status: 'Scheduled'
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Adding round:', formData);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="p-6 space-y-6">
-      <div className="bg-gray-50 p-4 rounded-md">
-        <h4 className="font-medium text-gray-900">Resource: {resource.name}</h4>
-        <p className="text-sm text-gray-600">{resource.jobTitle} at {resource.clientName}</p>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Round Type
-        </label>
-        <Dropdown
-          options={['Phone Screen', 'Technical Interview', 'Behavioral Interview', 'Final Interview', 'Client Interview']}
-          value={formData.roundType}
-          onChange={(value) => setFormData({ ...formData, roundType: value as string })}
-          placeholder="Select Round Type"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Interviewer
-        </label>
-        <input
-          type="text"
-          name="interviewer"
-          value={formData.interviewer}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Interview Date
-        </label>
-        <input
-          type="date"
-          name="date"
-          value={formData.date}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Status
-        </label>
-        <Dropdown
-          options={['Scheduled', 'Completed', 'Passed', 'Failed', 'No Show']}
-          value={formData.status}
-          onChange={(value) => setFormData({ ...formData, status: value as string })}
-          placeholder="Select Status"
-          required
-        />
-      </div>
-
-      <div className="flex justify-end">
-        <Button type="submit" variant="primary">
-          Schedule Round
-        </Button>
-      </div>
-    </form>
-  );
-};
-
-interface EditRoundFormProps {
-  round: any;
-}
-
-const EditRoundForm: React.FC<EditRoundFormProps> = ({ round }) => {
-  const [formData, setFormData] = React.useState({
-    roundType: round.roundType,
-    interviewer: round.interviewer,
-    date: round.date,
-    status: round.status,
-    feedback: round.feedback || ''
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Updating round:', formData);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="p-6 space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Round Type
-        </label>
-        <Dropdown
-          options={['Phone Screen', 'Technical Interview', 'Behavioral Interview', 'Final Interview', 'Client Interview']}
-          value={formData.roundType}
-          onChange={(value) => setFormData({ ...formData, roundType: value as string })}
-          placeholder="Select Round Type"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Interviewer
-        </label>
-        <input
-          type="text"
-          name="interviewer"
-          value={formData.interviewer}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Interview Date
-        </label>
-        <input
-          type="date"
-          name="date"
-          value={formData.date}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Status
-        </label>
-        <Dropdown
-          options={['Scheduled', 'Completed', 'Passed', 'Failed', 'No Show']}
-          value={formData.status}
-          onChange={(value) => setFormData({ ...formData, status: value as string })}
-          placeholder="Select Status"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Feedback
-        </label>
-        <textarea
-          name="feedback"
-          value={formData.feedback}
-          onChange={handleChange}
-          rows={4}
-          placeholder="Enter interview feedback and notes..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <div className="flex justify-end">
-        <Button type="submit" variant="primary">
-          Update Round
-        </Button>
-      </div>
-    </form>
-  );
-};
+// moved Add/Edit round forms into new-forms
 
 export default ResourceDetails;

@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../store';
 
@@ -7,8 +8,8 @@ const GlobalLoader: React.FC = () => {
 
   if (!globalLoading) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[5000] flex items-center justify-center">
       <div className="bg-white rounded-lg p-8 shadow-2xl">
         <div className="flex items-center space-x-4">
           <div className="relative">
@@ -21,7 +22,8 @@ const GlobalLoader: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

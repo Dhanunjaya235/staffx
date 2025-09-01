@@ -1,18 +1,48 @@
 import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
 import { RootState } from '../store';
-import { addClient } from '../store/slices/clientsSlice';
+import { addClient, setClients } from '../store/slices/clientsSlice';
 import { useDrawer } from '../components/UI/Drawer/DrawerProvider';
 import Button from '../components/UI/Button/Button';
 import Table from '../components/UI/Table/Table';
 import Dropdown from '../components/UI/Dropdown/Dropdown';
-import { Building2, Plus, Briefcase, Users } from 'lucide-react';
+// removed unused RHF/Yup field imports after refactor
+import ClientForm from '../components/new-forms/ClientForm';
+import JobForm from '../components/new-forms/JobForm';
+import { clientsApi } from '../services/api/clientsApi';
+import { jobsApi } from '../services/api/jobsApi';
+import { useApi } from '../hooks/useApi';
+import { Plus } from 'lucide-react';
+import Jobs from './Jobs';
+import Resources from './Resources';
+import ResourceDetails from './ResourceDetails';
+import Breadcrumb from '../components/UI/Breadcrumb/Breadcrumb';
 
 const Clients: React.FC = () => {
-  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { clients } = useSelector((state: RootState) => state.clients);
+  const { roles } = useSelector((state: RootState) => state.roles);
+  const { jobs } = useSelector((state: RootState) => state.jobs);
   const { openDrawer } = useDrawer();
+  const getClients = useApi(clientsApi.getAll);
+  const createClient = useApi(clientsApi.create);
+  const createJob = useApi(jobsApi.create);
+
+  const [viewLevel, setViewLevel] = React.useState<'clients' | 'jobs' | 'resources'>('clients');
+  const [selectedClientId, setSelectedClientId] = React.useState<string | undefined>(undefined);
+  const [selectedJobId, setSelectedJobId] = React.useState<string | undefined>(undefined);
+  const [selectedClientName, setSelectedClientName] = React.useState<string | undefined>(undefined);
+  const [selectedJobName, setSelectedJobName] = React.useState<string | undefined>(undefined);
+  const [selectedResourceName, setSelectedResourceName] = React.useState<string | undefined>(undefined);
+  const [selectedResourceId, setSelectedResourceId] = React.useState<string | undefined>(undefined);
+
+  React.useEffect(() => {
+    (async () => {
+      const res = await getClients.execute();
+      // assuming envelope returns array directly as data
+      dispatch(setClients(res));
+    })();
+  }, [dispatch]);
 
   const columns = [
     { key: 'name', label: 'Client Name', filterable: true },
@@ -24,7 +54,14 @@ const Clients: React.FC = () => {
       label: 'Jobs',
       render: (count: number, client: any) => (
         <button
-          onClick={() => navigate(`/jobs?client=${client.id}`)}
+          onClick={() => {
+            setSelectedClientId(client.id);
+            setSelectedClientName(client.company || client.name);
+            setSelectedJobId(undefined);
+            setSelectedJobName(undefined);
+            setSelectedResourceName(undefined);
+            setViewLevel('jobs');
+          }}
           className="text-blue-600 hover:text-blue-800 font-medium"
         >
           {count} jobs
@@ -36,7 +73,14 @@ const Clients: React.FC = () => {
       label: 'Resources',
       render: (count: number, client: any) => (
         <button
-          onClick={() => navigate(`/resources?client=${client.id}`)}
+          onClick={() => {
+            setSelectedClientId(client.id);
+            setSelectedClientName(client.company || client.name);
+            setSelectedJobId(undefined);
+            setSelectedJobName(undefined);
+            setSelectedResourceName(undefined);
+            setViewLevel('resources');
+          }}
           className="text-blue-600 hover:text-blue-800 font-medium"
         >
           {count} resources
@@ -46,7 +90,7 @@ const Clients: React.FC = () => {
     {
       key: 'actions',
       label: 'Actions',
-      render: (_, client: any) => (
+      render: (_: unknown, client: any) => (
         <div className="space-x-2">
           <Button
             size="sm"
@@ -64,7 +108,22 @@ const Clients: React.FC = () => {
   const openCreateClientDrawer = () => {
     openDrawer({
       title: 'Create New Client',
-      content: <CreateClientForm />,
+      content: (
+        <ClientForm
+          mode="create"
+          onSubmit={async (values) => {
+            const res = await createClient.execute(values);
+            const newClient = {
+              id: res.id || Date.now().toString(),
+              ...values,
+              jobsCount: 0,
+              resourcesCount: 0,
+              createdAt: new Date().toISOString().split('T')[0],
+            } as any;
+            dispatch(addClient(newClient));
+          }}
+        />
+      ),
       onClose: () => {}
     });
   };
@@ -72,10 +131,116 @@ const Clients: React.FC = () => {
   const openAddJobDrawer = (client: any) => {
     openDrawer({
       title: `Add Job for ${client.company}`,
-      content: <AddJobForm client={client} />,
+      content: (
+        <JobForm
+          mode="create"
+          defaultValues={{ clientId: client.id, title: '', roleId: '', description: '', deadline: '' }}
+          clients={clients as any}
+          roles={roles as any}
+          onSubmit={async (values) => {
+            await createJob.execute({ ...values, status: 'Open' });
+          }}
+          onCreateRole={(setRoleId) => {
+            openDrawer({
+              title: 'Create New Role',
+              content: <CreateRoleForm onRoleCreated={(role) => setRoleId(role.id)} />,
+              onClose: () => {}
+            });
+          }}
+        />
+      ),
       onClose: () => {}
     });
   };
+
+  if (viewLevel === 'jobs' && selectedClientId) {
+    return (
+      <div className="p-6">
+        <div className="mb-4">
+          <Breadcrumb
+            home={{ label: 'Home', onClick: () => {
+              setViewLevel('clients');
+              setSelectedClientId(undefined);
+              setSelectedClientName(undefined);
+              setSelectedJobId(undefined);
+              setSelectedJobName(undefined);
+              setSelectedResourceName(undefined);
+            }}}
+            items={[
+              { label: selectedClientName || 'Client' },
+              { label: 'Jobs' },
+              ...(selectedResourceName ? [{ label: selectedResourceName }] : []),
+            ]}
+          />
+        </div>
+        <Jobs
+          embedded={true}
+          clientId={selectedClientId}
+          breadcrumbItems={[
+            { label: selectedClientName || 'Client', onClick: () => setViewLevel('clients') },
+            { label: 'Jobs' },
+          ]}
+          onOpenResources={({ clientId, jobId }) => {
+            setSelectedClientId(clientId);
+            setSelectedJobId(jobId);
+            const job = (jobs as any)?.find?.((j: any) => j.id === jobId);
+            setSelectedJobName(job?.title);
+            setSelectedResourceName(undefined);
+            setViewLevel('resources');
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (viewLevel === 'resources' && selectedClientId) {
+    return (
+      <div className="p-6">
+        <div className="mb-4">
+          <Breadcrumb
+            home={{ label: 'Home', onClick: () => {
+              setViewLevel('clients');
+              setSelectedClientId(undefined);
+              setSelectedClientName(undefined);
+              setSelectedJobId(undefined);
+              setSelectedJobName(undefined);
+              setSelectedResourceName(undefined);
+              setSelectedResourceId(undefined);
+            }}}
+            items={[
+              { label: selectedClientName || 'Client', onClick: () => setViewLevel('jobs') },
+              ...(selectedJobName ? [{ label: selectedJobName, onClick: () => setViewLevel('jobs') }] : []),
+              { label: 'Resources', onClick: selectedResourceId ? () => { setSelectedResourceId(undefined); setSelectedResourceName(undefined); } : undefined },
+              ...(selectedResourceName ? [{ label: selectedResourceName }] : []),
+            ]}
+          />
+        </div>
+        {selectedResourceId ? (
+          <ResourceDetails
+            embedded
+            showBreadcrumb={false}
+            resourceId={selectedResourceId}
+          />
+        ) : (
+          <Resources
+            embedded
+            clientId={selectedClientId}
+            jobId={selectedJobId}
+            showBreadcrumb={false}
+            breadcrumbItems={[
+              { label: selectedClientName || 'Client', onClick: () => setViewLevel('jobs') },
+              ...(selectedJobName ? [{ label: selectedJobName, onClick: () => setViewLevel('jobs') }] : []),
+              { label: 'Resources' },
+            ]}
+            onOpenResourceDetails={(resource) => {
+              setSelectedResourceName(resource?.name);
+              setSelectedResourceId(resource?.id);
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -102,235 +267,11 @@ const Clients: React.FC = () => {
   );
 };
 
-const CreateClientForm: React.FC = () => {
-  const dispatch = useDispatch();
-  const [formData, setFormData] = React.useState({
-    name: '',
-    email: '',
-    phone: '',
-    company: '',
-    industry: ''
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newClient = {
-      id: Date.now().toString(),
-      ...formData,
-      jobsCount: 0,
-      resourcesCount: 0,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-    dispatch(addClient(newClient));
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="p-6 space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Contact Name
-        </label>
-        <input
-          type="text"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Email
-        </label>
-        <input
-          type="email"
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Phone
-        </label>
-        <input
-          type="tel"
-          name="phone"
-          value={formData.phone}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Company
-        </label>
-        <input
-          type="text"
-          name="company"
-          value={formData.company}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Industry
-        </label>
-        <Dropdown
-          options={['Technology', 'Consulting', 'Finance', 'Healthcare']}
-          value={formData.industry}
-          onChange={(value) => setFormData({ ...formData, industry: value as string })}
-          placeholder="Select Industry"
-          required
-        />
-      </div>
-
-      <div className="flex justify-end">
-        <Button type="submit" variant="primary">
-          Create Client
-        </Button>
-      </div>
-    </form>
-  );
-};
-
-interface AddJobFormProps {
-  client: any;
-}
-
-const AddJobForm: React.FC<AddJobFormProps> = ({ client }) => {
-  const dispatch = useDispatch();
-  const { roles } = useSelector((state: RootState) => state.roles);
-  const { openDrawer } = useDrawer();
-
-  const [formData, setFormData] = React.useState({
-    title: '',
-    roleId: '',
-    description: '',
-    deadline: ''
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const selectedRole = roles.find(r => r.id === formData.roleId);
-    // Would normally dispatch addJob action here
-    console.log('Adding job:', { ...formData, client, role: selectedRole });
-  };
-
-  const openCreateRoleDrawer = () => {
-    openDrawer({
-      title: 'Create New Role',
-      content: <CreateRoleForm onRoleCreated={(role) => setFormData({...formData, roleId: role.id})} />,
-      onClose: () => {}
-    });
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="p-6 space-y-6">
-      <div className="bg-gray-50 p-4 rounded-md">
-        <h4 className="font-medium text-gray-900">Client: {client.company}</h4>
-        <p className="text-sm text-gray-600">{client.name} • {client.email}</p>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Job Title
-        </label>
-        <input
-          type="text"
-          name="title"
-          value={formData.title}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Role
-        </label>
-        <div className="flex space-x-2">
-          <Dropdown
-            options={roles}
-            displayKey="name"
-            value={formData.roleId}
-            onChange={(value) => setFormData({...formData, roleId: (value as any)?.id || ''})}
-            placeholder="Select Role"
-            className="flex-1"
-            required
-          />
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={openCreateRoleDrawer}
-            icon={Plus}
-          >
-            New Role
-          </Button>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Description
-        </label>
-        <textarea
-          name="description"
-          value={formData.description}
-          onChange={handleChange}
-          rows={4}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Deadline
-        </label>
-        <input
-          type="date"
-          name="deadline"
-          value={formData.deadline}
-          onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <div className="flex justify-end">
-        <Button type="submit" variant="primary">
-          Create Job
-        </Button>
-      </div>
-    </form>
-  );
-};
-
 interface CreateRoleFormProps {
   onRoleCreated: (role: any) => void;
 }
 
 const CreateRoleForm: React.FC<CreateRoleFormProps> = ({ onRoleCreated }) => {
-  const dispatch = useDispatch();
   const [formData, setFormData] = React.useState({
     name: '',
     department: '',
